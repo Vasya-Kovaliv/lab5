@@ -1,0 +1,111 @@
+import struct
+import hashlib
+import time
+
+def sha1(message):
+
+    h0 = 0x67452301
+    h1 = 0xEFCDAB89
+    h2 = 0x98BADCFE
+    h3 = 0x10325476
+    h4 = 0xC3D2E1F0
+
+    message = bytearray(message, 'utf-8')
+
+    ml = len(message) * 8
+    message.append(0x80)
+    while (len(message) * 8) % 512 != 448:
+        message.append(0x00)
+    message += struct.pack('>Q', ml)
+
+    #Розділення по 512 біт
+    blocks = []
+    for i in range(0, len(message), 64):
+        blocks.append(message[i:i+64])
+
+    
+    def left_rotate(n, b):
+        return ((n << b) | (n >> (32 - b))) & 0xFFFFFFFF
+
+    
+    for block in blocks:
+        w = list(struct.unpack('>16L', block)) + [0] * 64
+
+        for i in range(16, 80):
+            w[i] = left_rotate(w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16], 1)
+
+        a = h0
+        b = h1
+        c = h2
+        d = h3
+        e = h4
+
+        for i in range(80):
+            if i <= 19:
+                f = (b & c) | ((~b) & d)
+                k = 0x5A827999
+            elif i <= 39:
+                f = b ^ c ^ d
+                k = 0x6ED9EBA1
+            elif i <= 59:
+                f = (b & c) | (b & d) | (c & d)
+                k = 0x8F1BBCDC
+            else:
+                f = b ^ c ^ d
+                k = 0xCA62C1D6
+
+            temp = left_rotate(a, 5) + f + e + k + w[i] & 0xFFFFFFFF
+            e = d
+            d = c
+            c = left_rotate(b, 30)
+            b = a
+            a = temp
+
+        h0 = (h0 + a) & 0xFFFFFFFF
+        h1 = (h1 + b) & 0xFFFFFFFF
+        h2 = (h2 + c) & 0xFFFFFFFF
+        h3 = (h3 + d) & 0xFFFFFFFF
+        h4 = (h4 + e) & 0xFFFFFFFF
+
+    
+    digest = struct.pack('>5L', h0, h1, h2, h3, h4)
+    return digest.hex()
+
+
+def test_hash_match(message):
+    hashed_message_custom = sha1(message)
+    hashed_message_library = hashlib.sha1(message.encode()).hexdigest()
+
+    if hashed_message_custom == hashed_message_library:
+        print(f"Хеш-значення співпадають для повідомлення: {message}")
+    else:
+        print(f"Хеш-значення не співпадають для повідомлення: {message}")
+
+def compare_speed(message):
+    start_time_custom = time.time()
+    hashed_message_custom = sha1(message)
+    end_time_custom = time.time()
+
+    start_time_library = time.time()
+    hashed_message_library = hashlib.sha1(message.encode()).hexdigest()
+    end_time_library = time.time()
+
+    time_custom = end_time_custom - start_time_custom
+    time_library = end_time_library - start_time_library
+
+    print(f"Час виконання : {time_custom} секунд")
+    print(f"Час виконання бібліотечної реалізації: {time_library} секунд")
+
+
+# Приклад використання
+message1 = "Hello world!"
+message2 = "Lorem ipsum dolor sit amet, distibuted lab, cryptography in decentralized systems.."
+message3 = "test message"
+
+test_hash_match(message1)
+test_hash_match(message2)
+test_hash_match(message3)
+
+compare_speed(message1)
+compare_speed(message2)
+compare_speed(message3)
